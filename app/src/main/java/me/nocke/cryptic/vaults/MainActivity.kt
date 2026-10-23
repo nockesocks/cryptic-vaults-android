@@ -171,32 +171,54 @@ class MainActivity : LockedActivity() {
 
     private lateinit var lockIcon: LockIcon
     private lateinit var title: SheenText
+    private lateinit var vaults: SheenText
 
-    private fun revealTitle() = title.reveal("Cryptic™ Vaults")
+    /** "Cryptic™" decodes; once it settles, "Vaults" fades in below with its own sheen. */
+    private fun revealTitle() = title.reveal("Cryptic™") { fitVaults(); vaults.animate().alpha(1f).setDuration(600).start(); vaults.play() }
+
+    /** Sizes "Vaults" to run from just right of the "p" in "Cryptic™" to the ™'s right edge. */
+    private fun fitVaults() {
+        val t = title.text; val tp = title.paint
+        val start = android.text.Layout.getDesiredWidth(t, 0, t.indexOf('p') + 1, tp) + ui.dp(3)
+        val target = android.text.Layout.getDesiredWidth(t, tp) - start
+        vaults.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, vaults.textSize * target / vaults.paint.measureText("Vaults"))
+        (vaults.layoutParams as LinearLayout.LayoutParams).leftMargin = titleIndent + start.toInt(); vaults.requestLayout()
+    }
 
     override fun onResume() { super.onResume(); Volumes.listeners.add(refresh); render() }
     override fun onPause() { super.onPause(); Volumes.listeners.remove(refresh) }
 
     private val ui by lazy { Ui(this) }
 
-    /** Padlock that snaps shut and then sets off the sheen on "Cryptic Vaults"; gear for Settings. */
-    private fun header() = LinearLayout(this).apply {
+    /** Padlock that snaps shut and then sets off the sheen on "Cryptic™ Vaults"; gear for Settings. */
+    /** Left edge of the title, past the padlock: "Vaults" and the tagline line up under it. */
+    private val titleIndent by lazy { ui.dp(52 + 14) }
+
+    private fun header() = ui.column().apply {
         clipChildren = false; clipToPadding = false   // the padlock's burst spills over the title
-        gravity = android.view.Gravity.CENTER_VERTICAL; setPadding(ui.dp(4), ui.dp(8), 0, ui.dp(8))
-        title = SheenText(this@MainActivity).apply { text = "Cryptic™ Vaults"; textSize = 34f; setSingleLine() }
+        setPadding(ui.dp(4), ui.dp(8), 0, ui.dp(8))
+        title = SheenText(this@MainActivity).apply { text = "Cryptic™"; textSize = 34f; setSingleLine() }
+        // a softer true italic (serif), so the product name reads apart from the family name
+        vaults = SheenText(this@MainActivity).apply {
+            text = "Vaults"; textSize = 22f; setSingleLine(); alpha = 0f
+            typeface = android.graphics.Typeface.create("serif", android.graphics.Typeface.ITALIC); letterSpacing = 0.04f
+        }
         lockIcon = LockIcon(this@MainActivity)
-        addView(lockIcon, LinearLayout.LayoutParams(ui.dp(52), ui.dp(52)))
-        addView(ui.column().apply {
-            addView(title, LinearLayout.LayoutParams(-2, -2))
-            addView(TextView(this@MainActivity).apply {
-                text = "LUKS2 removable disk & container encryption utility for Android"; textSize = 13f; setTextColor(getColor(R.color.text_muted))
-            })
-        }, LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = ui.dp(14) })
-        addView(android.widget.ImageView(this@MainActivity).apply {
-            setImageResource(R.drawable.ic_settings); imageTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.text_muted))
-            contentDescription = "Settings"; setPadding(ui.dp(10), ui.dp(10), ui.dp(10), ui.dp(10)); isClickable = true
-            setOnClickListener { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)) }
-        }, LinearLayout.LayoutParams(ui.dp(44), ui.dp(44)).apply { gravity = android.view.Gravity.TOP; topMargin = ui.dp(2) })   // in line with the title, not the tagline
+        // padlock, "Cryptic™" and the gear on one line; the rest sits below, under the title
+        addView(LinearLayout(this@MainActivity).apply {
+            clipChildren = false; clipToPadding = false; gravity = android.view.Gravity.CENTER_VERTICAL
+            addView(lockIcon, LinearLayout.LayoutParams(ui.dp(52), ui.dp(52)))
+            addView(title, LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = ui.dp(14) })
+            addView(android.widget.ImageView(this@MainActivity).apply {
+                setImageResource(R.drawable.ic_settings); imageTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.text_muted))
+                contentDescription = "Settings"; setPadding(ui.dp(10), ui.dp(10), ui.dp(10), ui.dp(10)); isClickable = true
+                setOnClickListener { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)) }
+            }, LinearLayout.LayoutParams(ui.dp(44), ui.dp(44)))
+        })
+        addView(vaults, LinearLayout.LayoutParams(-2, -2).apply { leftMargin = titleIndent; topMargin = -ui.dp(8) })
+        addView(TextView(this@MainActivity).apply {
+            text = "LUKS2 removable disk & container encryption\nutility for Android"; textSize = 13f; setTextColor(getColor(R.color.text_muted))
+        }, LinearLayout.LayoutParams(-2, -2).apply { leftMargin = titleIndent; topMargin = ui.dp(12) })
     }
 
     /** Sections appear only when they have something to show; every volume, drive and container gets a card. */

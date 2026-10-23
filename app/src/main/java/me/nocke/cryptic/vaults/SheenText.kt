@@ -42,7 +42,7 @@ class SheenText(c: Context) : TextView(c) {
      * settle left to right. The view wraps the current text every frame, so no glyph is ever cut off.
      */
     fun reveal(word: String, settled: () -> Unit = {}) {
-        text = word
+        text = styled(word)
         if (!ValueAnimator.areAnimatorsEnabled()) { settled(); return }
         val extra = 4
         val glyphs = "0123456789abcdef#\$%&@*+=/<>{}[]?!~^"
@@ -57,12 +57,21 @@ class SheenText(c: Context) : TextView(c) {
                 val f = va.animatedFraction
                 val settled = ((f * 1.25f - 0.25f) * word.length).toInt().coerceIn(0, word.length)
                 val length = word.length + Math.round(extra * (1f - (f / 0.8f).coerceAtMost(1f)))   // 11 → 7 by 80 %
-                text = word.substring(0, settled) + String(CharArray(maxOf(0, length - settled)) { glyphs[rnd.nextInt(glyphs.length)] })
+                text = styled(word.substring(0, settled) + String(CharArray(maxOf(0, length - settled)) { glyphs[rnd.nextInt(glyphs.length)] }))
             }
             addListener(object : android.animation.AnimatorListenerAdapter() {
-                override fun onAnimationEnd(a: android.animation.Animator) { text = word; settled(); play() }
+                override fun onAnimationEnd(a: android.animation.Animator) { text = styled(word); settled(); play() }
             })
             start()
+        }
+    }
+
+    /** A ™ in [s] at regular weight and a little smaller than the bold title, so it doesn't crowd the name. */
+    private fun styled(s: String): CharSequence {
+        val i = s.indexOf('™'); if (i < 0) return s
+        return android.text.SpannableString(s).apply {
+            setSpan(android.text.style.RelativeSizeSpan(31f / 34f), i, i + 1, 0)
+            setSpan(android.text.style.TypefaceSpan(Typeface.create("sans-serif", Typeface.NORMAL)), i, i + 1, 0)
         }
     }
 
