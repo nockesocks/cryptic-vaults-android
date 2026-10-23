@@ -224,7 +224,7 @@ class SettingsActivity : LockedActivity() {
                 }, top = 12))
             }
             Prefs.LockMethod.YUBIKEY -> {
-                card.addView(ui.note("Your YubiKey plugged into the phone, its FIDO2 PIN and a touch. If the key is lost there is no way back in except clearing Cryptic Vaults' data in Android settings. Your drives and containers aren't affected by that.", top = 6))
+                card.addView(ui.note("Your YubiKey, plugged in or held to the phone, its FIDO2 PIN and a touch (over NFC, the tap is the touch). If the key is lost there is no way back in except clearing Cryptic Vaults' data in Android settings. Your drives and containers aren't affected by that.", top = 6))
                 card.addView(ui.note("After the YubiKey, also require", top = 16))
                 card.addView(ui.chips(Prefs.Second.values().map { it.name to it.title }, prefs.yubiSecond.name, perRow = 2) { setSecond(Prefs.Second.valueOf(it)) })
                 card.addView(ui.note("Optional. Once the key has passed, Cryptic Vaults asks for this as well before it opens.", top = 6))
@@ -338,7 +338,7 @@ class SettingsActivity : LockedActivity() {
     private fun confirmCurrent(title: String, ok: () -> Unit, cancel: () -> Unit) {
         if (!prefs.appLock) return ok()
         if (prefs.lockMethod == Prefs.LockMethod.PHONE) return LockedActivity.prompt(this, title, ok, cancel)
-        if (prefs.lockMethod == Prefs.LockMethod.YUBIKEY) return yubiKeyDialog(title, "Plug in the YubiKey Cryptic Vaults is set up with, enter its PIN, then touch it.", "Continue", cancel,
+        if (prefs.lockMethod == Prefs.LockMethod.YUBIKEY) return yubiKeyDialog(title, "Enter the PIN of the YubiKey Cryptic Vaults is set up with, then touch it while plugged in, or hold it to the phone.", "Continue", cancel,
             { s, pin, say -> YubiKey.unlock(s, prefs.yubiKey!!, pin, say) }) { k -> k.fill(0); ok() }
         Form(this, title).password("cur", "Current app passphrase")
             .show("Continue", onCancel = cancel, validate = { if (it.text["cur"].isNullOrEmpty()) "Enter your current app passphrase" else null }) { v ->
@@ -414,8 +414,8 @@ class SettingsActivity : LockedActivity() {
 
     /** Sets a YubiKey up as the app lock: a credential on the key, its secret read once, then the method switches. */
     private fun newYubiKey(cancel: () -> Unit) = yubiKeyDialog("Set up your YubiKey",
-        "Plug your YubiKey into the phone. Cryptic Vaults makes a credential on it; from then on Cryptic Vaults unlocks with the key plugged in, its FIDO2 PIN and a touch. " +
-            "The key must already have a FIDO2 PIN (set one with Yubico Authenticator if it has none). You'll be asked to touch the key twice.\n\n" +
+        "Plug your YubiKey into the phone, or enter its PIN and hold it to the back of the phone. Cryptic Vaults makes a credential on it; from then on Cryptic Vaults unlocks with the key, plugged in or held to the phone, its FIDO2 PIN and a touch. " +
+            "The key must already have a FIDO2 PIN (set one with Yubico Authenticator if it has none). Plugged in, you'll be asked to touch the key twice; over NFC, keep it held until it's done.\n\n" +
             "If the key is lost there is no way back in except clearing Cryptic Vaults' data. Your drives and containers aren't affected by that.",
         "Set up", cancel, { s, pin, say -> YubiKey.enrol(s, pin, say) }) { (record, key) ->
             wipeSaved()                 // whatever was saved was protected by the previous unlock

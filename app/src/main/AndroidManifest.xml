@@ -2,8 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Yubico's SDK declares NFC for its NFC transport; Cryptic Vaults talks to the key over USB only -->
-    <uses-permission android:name="android.permission.NFC" tools:node="remove" />
+    <!-- the YubiKey over NFC as well as USB (Yubico's SDK declares the NFC permission; no NFC feature is required) -->
 
     <uses-feature android:name="android.hardware.usb.host" android:required="false" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />

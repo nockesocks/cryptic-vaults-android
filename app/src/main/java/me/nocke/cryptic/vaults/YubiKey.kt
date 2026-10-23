@@ -2,10 +2,13 @@ package me.nocke.cryptic.vaults
 
 import android.app.Activity
 import com.yubico.yubikit.android.YubiKitManager
+import com.yubico.yubikit.android.transport.nfc.NfcConfiguration
 import com.yubico.yubikit.android.transport.usb.UsbConfiguration
 import com.yubico.yubikit.android.transport.usb.UsbYubiKeyDevice
+import com.yubico.yubikit.core.YubiKeyDevice
 import com.yubico.yubikit.core.fido.CtapException
 import com.yubico.yubikit.core.fido.FidoConnection
+import com.yubico.yubikit.core.smartcard.SmartCardConnection
 import com.yubico.yubikit.fido.ctap.ClientPin
 import com.yubico.yubikit.fido.ctap.Ctap2Session
 import com.yubico.yubikit.fido.ctap.PinUvAuthProtocol
@@ -22,26 +25,41 @@ import javax.crypto.spec.SecretKeySpec
 import kotlin.concurrent.thread
 
 /**
- * A YubiKey plugged into the phone as the app lock (Settings → App lock → YubiKey), through FIDO2's hmac-secret
+ * A YubiKey, plugged in or held to the phone (NFC), as the app lock (Settings → App lock → YubiKey), through FIDO2's hmac-secret
  * extension with the key's own PIN: the key alone is not enough. The key holds a credential
  * made for Cryptic Vaults; given a stored salt, the right PIN and a touch, it returns a 32-byte secret. Without the PIN the
  * key answers with a different secret, so the PIN can't be skipped. From that secret come a verifier (stored) and the
  * key that protects saved vault passphrases (kept in memory while the app is unlocked), as [AppSecret] does for the
  * app passphrase. Stored record: JSON with the credential id, the salt and the verifier; never the secret or the PIN.
- * USB, CTAP2 and the PIN protocol are Yubico's SDK (yubikit); it has no network code.
+ * USB, NFC, CTAP2 and the PIN protocol are Yubico's SDK (yubikit); it has no network code. The user never picks a
+ * transport: a plugged-in key is used at once; otherwise, once the PIN is in, the next key held to the phone is.
  */
 class YubiKey(private val a: Activity, private val status: (String) -> Unit) {
     private val kit = YubiKitManager(a)
     @Volatile private var device: UsbYubiKeyDevice? = null
+    @Volatile private var pending: ((YubiKeyDevice) -> Unit)? = null   // the PIN is in: what to run on the next key tapped
+    private var nfc = false
 
-    /** Watches for a key: one already plugged in, or the next one. Android asks for USB access to it the first time. */
-    fun start() = kit.startUsbDiscovery(UsbConfiguration()) { d ->
-        device = d
-        d.setOnClosed { device = null; say(WAITING) }
-        say("YubiKey connected. Enter its PIN.")
+    /**
+     * Watches for a key: one already plugged in, or the next one (Android asks for USB access to it the first time),
+     * and for a key held to the phone, when NFC is on.
+     */
+    fun start() {
+        kit.startUsbDiscovery(UsbConfiguration()) { d ->
+            device = d
+            d.setOnClosed { device = null; say(WAITING) }
+            say("YubiKey connected. Enter its PIN.")
+        }
+        nfc = runCatching { kit.startNfcDiscovery(NfcConfiguration().handleUnavailableNfc(false).timeout(5000), a) { d -> tapped(d) } }.isSuccess
     }
 
-    fun stop() = kit.stopUsbDiscovery()
+    fun stop() { pending = null; kit.stopUsbDiscovery(); if (nfc) runCatching { kit.stopNfcDiscovery(a) } }
+
+    /** On the SDK's NFC thread, while the key is in the field: the waiting work runs on it now, or the user is told the PIN comes first. */
+    private fun tapped(d: YubiKeyDevice) {
+        val job = pending ?: return say("Enter the PIN first, then hold the key to the phone")
+        pending = null; job(d)
+    }
 
     private fun say(s: String) = a.runOnUiThread { status(s) }
 
@@ -50,15 +68,25 @@ class YubiKey(private val a: Activity, private val status: (String) -> Unit) {
      * what to do next. [done], on the main thread, gets the result, or null and what went wrong.
      */
     fun <T : Any> run(work: (Ctap2Session, (String) -> Unit) -> T, done: (T?, String?) -> Unit) {
-        val d = device ?: return done(null, "Plug your YubiKey into the phone first")
-        thread(name = "yubikey") {
-            val r = runCatching { d.openConnection(FidoConnection::class.java).use { c -> Ctap2Session(c).use { s -> work(s, ::say) } } }
-            a.runOnUiThread { r.fold({ done(it, null) }, { AppLog.e("YubiKey", it); done(null, explain(it)) }) }
+        val usb = device
+        if (usb != null) {
+            thread(name = "yubikey") { finish(runCatching { usb.openConnection(FidoConnection::class.java).use { c -> Ctap2Session(c).use { s -> work(s, ::say) } } }, false, done) }
+            return
         }
+        if (!nfc) return done(null, "Plug your YubiKey into the phone first")
+        say(HOLD)
+        // over NFC the tap is the touch: keep the key there until the work is done
+        val hold: (String) -> Unit = { m -> say(if (m.startsWith("Touch")) "Hold the key still…" else m) }
+        pending = { d -> finish(runCatching { d.openConnection(SmartCardConnection::class.java).use { c -> Ctap2Session(c).use { s -> work(s, hold) } } }, true, done) }
     }
 
+    private fun <T : Any> finish(r: Result<T>, overNfc: Boolean, done: (T?, String?) -> Unit) =
+        a.runOnUiThread { r.fold({ done(it, null) }, { AppLog.e("YubiKey", it); done(null, if (overNfc && it is java.io.IOException) MOVED else explain(it)) }) }
+
     companion object {
-        const val WAITING = "Plug in your YubiKey"
+        const val WAITING = "Plug in your YubiKey, or enter its PIN and hold it to the phone"
+        private const val HOLD = "Plug in your YubiKey or hold it to the back of the phone"
+        private const val MOVED = "The YubiKey moved away too soon. Try again and hold it to the phone until it's done."
         private const val RP_ID = "vaults.cryptic.nocke.me"      // names the credential on the key; never looked up anywhere
         private const val TOUCH = "Touch your YubiKey"
 
@@ -133,7 +161,7 @@ class YubiKey(private val a: Activity, private val status: (String) -> Unit) {
         private fun explain(e: Throwable): String = when (val code = (e as? CtapException)?.ctapError) {
             null -> e.message ?: e.javaClass.simpleName
             CtapException.ERR_PIN_INVALID -> "Wrong YubiKey PIN"
-            CtapException.ERR_PIN_AUTH_BLOCKED -> "Too many wrong PINs in a row: unplug the YubiKey, plug it back in and try again"
+            CtapException.ERR_PIN_AUTH_BLOCKED -> "Too many wrong PINs in a row: take the YubiKey away (unplug it), bring it back and try again"
             CtapException.ERR_PIN_BLOCKED -> "The YubiKey's PIN is blocked after too many wrong tries. The key's FIDO2 function has to be reset."
             CtapException.ERR_PIN_NOT_SET -> "This YubiKey has no FIDO2 PIN yet. Set one first, then try again."
             CtapException.ERR_NO_CREDENTIALS, CtapException.ERR_INVALID_CREDENTIAL -> WRONG_KEY
