@@ -102,6 +102,16 @@ class Ui(private val c: Context) {
         setOnClickListener { onClick() }
     }
 
+    /** A raised panel inside a card, like the tip cups: a title, a muted line, tappable when [onClick] is given. */
+    fun subcard(title: String, subtitle: String, onClick: (() -> Unit)? = null) = column().apply {
+        setPadding(dp(14), dp(12), dp(14), dp(12)); layoutParams = lp(top = 10)
+        val panel = shape(color(R.color.surface_high), 12, color(R.color.divider))
+        background = if (onClick == null) panel else RippleDrawable(ColorStateList.valueOf(0x33FFFFFF), panel, shape(0xFFFFFFFF.toInt(), 12))
+        addView(TextView(c).apply { text = title; textSize = 16f; setTextColor(color(R.color.text)); typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL) })
+        addView(TextView(c).apply { text = subtitle; textSize = 13f; setTextColor(color(R.color.text_muted)); setLineSpacing(0f, 1.1f) }, lp(top = 2))
+        if (onClick != null) { isClickable = true; isFocusable = true; setOnClickListener { onClick() } }
+    }
+
     /** Buttons side by side, sharing the width. */
     fun row(vararg views: View, top: Int = 14) = LinearLayout(c).apply {
         layoutParams = lp(top = top)

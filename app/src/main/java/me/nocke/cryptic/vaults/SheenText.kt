@@ -14,6 +14,23 @@ import android.widget.TextView
  * word), settling left to right, then sweeps one sheen across it. Still (just the word)
  * when animations are off.
  */
+/** A ™ in [s] at regular weight and a little smaller than bold text around it, so it doesn't crowd the name. */
+fun softTm(s: String): CharSequence {
+    val i = s.indexOf('™'); if (i < 0) return s
+    return android.text.SpannableString(s).apply {
+        setSpan(android.text.style.RelativeSizeSpan(31f / 34f), i, i + 1, 0)
+        setSpan(android.text.style.TypefaceSpan(Typeface.create("sans-serif", Typeface.NORMAL)), i, i + 1, 0)
+    }
+}
+
+/** The title's resting gradient (accent, lighter, accent) across one word drawn from [start] px, [width] px wide. */
+class SheenSpan(private val c: Context, private val start: Float, private val width: Float) : android.text.style.CharacterStyle(), android.text.style.UpdateAppearance {
+    override fun updateDrawState(tp: android.text.TextPaint) {
+        val base = c.getColor(R.color.accent)
+        tp.shader = LinearGradient(start, 0f, start + width, 0f, intArrayOf(base, c.getColor(R.color.accent_light), base), floatArrayOf(0f, 0.4f, 1f), Shader.TileMode.CLAMP)
+    }
+}
+
 class SheenText(c: Context) : TextView(c) {
     private val shaderMatrix = Matrix()
     private var shader: LinearGradient? = null
@@ -42,7 +59,7 @@ class SheenText(c: Context) : TextView(c) {
      * settle left to right. The view wraps the current text every frame, so no glyph is ever cut off.
      */
     fun reveal(word: String, settled: () -> Unit = {}) {
-        text = styled(word)
+        text = softTm(word)
         if (!ValueAnimator.areAnimatorsEnabled()) { settled(); return }
         val extra = 4
         val glyphs = "0123456789abcdef#\$%&@*+=/<>{}[]?!~^"
@@ -57,21 +74,12 @@ class SheenText(c: Context) : TextView(c) {
                 val f = va.animatedFraction
                 val settled = ((f * 1.25f - 0.25f) * word.length).toInt().coerceIn(0, word.length)
                 val length = word.length + Math.round(extra * (1f - (f / 0.8f).coerceAtMost(1f)))   // 11 → 7 by 80 %
-                text = styled(word.substring(0, settled) + String(CharArray(maxOf(0, length - settled)) { glyphs[rnd.nextInt(glyphs.length)] }))
+                text = softTm(word.substring(0, settled) + String(CharArray(maxOf(0, length - settled)) { glyphs[rnd.nextInt(glyphs.length)] }))
             }
             addListener(object : android.animation.AnimatorListenerAdapter() {
-                override fun onAnimationEnd(a: android.animation.Animator) { text = styled(word); settled(); play() }
+                override fun onAnimationEnd(a: android.animation.Animator) { text = softTm(word); settled(); play() }
             })
             start()
-        }
-    }
-
-    /** A ™ in [s] at regular weight and a little smaller than the bold title, so it doesn't crowd the name. */
-    private fun styled(s: String): CharSequence {
-        val i = s.indexOf('™'); if (i < 0) return s
-        return android.text.SpannableString(s).apply {
-            setSpan(android.text.style.RelativeSizeSpan(31f / 34f), i, i + 1, 0)
-            setSpan(android.text.style.TypefaceSpan(Typeface.create("sans-serif", Typeface.NORMAL)), i, i + 1, 0)
         }
     }
 

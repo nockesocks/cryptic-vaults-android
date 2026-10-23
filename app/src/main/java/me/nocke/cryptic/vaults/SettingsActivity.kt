@@ -57,6 +57,7 @@ class SettingsActivity : LockedActivity() {
 
         col.addView(ui.section("About"))
         col.addView(ui.card().apply { about(this) })
+        col.addView(ui.card().apply { family(this) })
 
         if (SHOW_LOG_SHARE) {
             col.addView(ui.section("Having issues?"))
@@ -138,7 +139,7 @@ class SettingsActivity : LockedActivity() {
             gravity = android.view.Gravity.CENTER_VERTICAL
             addView(LockIcon(this@SettingsActivity, shut = true), android.widget.LinearLayout.LayoutParams(ui.dp(44), ui.dp(44)))   // the home padlock, still
             addView(ui.column().apply {
-                addView(android.widget.TextView(this@SettingsActivity).apply { text = "Cryptic™ Vaults $version"; textSize = 16f; setTextColor(getColor(R.color.text)); typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL) })
+                addView(android.widget.TextView(this@SettingsActivity).apply { text = "Cryptic Vaults $version"; textSize = 16f; setTextColor(getColor(R.color.text)); typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL) })
                 addView(android.widget.TextView(this@SettingsActivity).apply { text = "LUKS2 removable disk & container encryption utility for Android"; textSize = 13f; setTextColor(getColor(R.color.text_muted)) })
             }, android.widget.LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = ui.dp(12) })
         })
@@ -162,11 +163,22 @@ class SettingsActivity : LockedActivity() {
         card.addView(ui.heading("Free, as it should be."))
         card.addView(ui.paragraph("No paywall, no gotcha, no upsell, no monetizing your data. Free forever, because it's the right thing to do. " +
             "If you don't think that's fair, you can always buy me a coffee! \uD83D\uDE0A"))
-        card.addView(ui.heading("The Cryptic™ family"))
-        card.addView(ui.paragraph("Cryptic™ Vaults is a member of the Cryptic™ family of utilities:"))
-        card.addView(ui.link("Cryptic Vaults for Linux and macOS: the same LUKS2 drives and containers on your computer") { openPage(DESKTOP) })
-        card.addView(ui.note("Cryptic Pass: a password manager, coming soon"))
-        card.addView(ui.link("See all Cryptic™ apps: github.com/nockesocks") { openPage(GITHUB) })
+    }
+
+    /** The other Cryptic apps, each on its own panel; the one ™ is on the heading. */
+    private fun family(card: LinearLayout) {
+        card.addView(ui.heading("").apply {
+            (layoutParams as LinearLayout.LayoutParams).topMargin = 0
+            val word = "Cryptic"; val prefix = "The "
+            text = android.text.SpannableString(softTm("$prefix$word™ family")).apply {
+                setSpan(SheenSpan(this@SettingsActivity, paint.measureText(prefix), paint.measureText(word)), prefix.length, prefix.length + word.length, 0)
+            }
+        })
+        card.addView(ui.paragraph("Cryptic Vaults is a member of the Cryptic family of utilities. Check out our other apps:"))
+        card.addView(ui.subcard("Cryptic Vaults for Linux and macOS", "The same LUKS2 drives and containers on your computer.") { openPage(DESKTOP) }
+            .apply { (layoutParams as LinearLayout.LayoutParams).topMargin = ui.dp(14) })
+        card.addView(ui.subcard("Cryptic Pass", "A password manager. Coming soon."))
+        card.addView(ui.link("See all Cryptic apps on github.com/nockesocks") { openPage(GITHUB) }.apply { (layoutParams as LinearLayout.LayoutParams).topMargin = ui.dp(8) })
     }
 
     private fun openPage(url: String) {
