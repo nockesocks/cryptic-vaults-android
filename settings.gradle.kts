@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "cryptic"
+rootProject.name = "cryptic-vaults-android"
 include(":app")

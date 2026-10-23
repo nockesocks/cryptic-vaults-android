@@ -5,7 +5,7 @@
 #include "argon2.h"
 
 JNIEXPORT jint JNICALL
-Java_me_nocke_cryptic_luks_NativeArgon2_hash(JNIEnv *env, jclass cls, jint type, jint t_cost, jint m_cost_kib,
+Java_me_nocke_cryptic_vaults_luks_NativeArgon2_hash(JNIEnv *env, jclass cls, jint type, jint t_cost, jint m_cost_kib,
                                              jint lanes, jbyteArray pass, jbyteArray salt, jbyteArray out) {
     jsize pass_len = (*env)->GetArrayLength(env, pass);
     jsize salt_len = (*env)->GetArrayLength(env, salt);

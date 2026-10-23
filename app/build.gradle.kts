@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "me.nocke.cryptic"
+    namespace = "me.nocke.cryptic.vaults"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "me.nocke.cryptic"
+        applicationId = "me.nocke.cryptic.vaults"
         minSdk = 34
         targetSdk = 36
         versionCode = 1

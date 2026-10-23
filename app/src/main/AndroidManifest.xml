@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Yubico's SDK declares NFC for its NFC transport; Cryptic talks to the key over USB only -->
+    <!-- Yubico's SDK declares NFC for its NFC transport; Cryptic Vaults talks to the key over USB only -->
     <uses-permission android:name="android.permission.NFC" tools:node="remove" />
 
     <uses-feature android:name="android.hardware.usb.host" android:required="false" />
@@ -21,7 +21,7 @@
     </queries>
 
     <application
-        android:label="Cryptic"
+        android:label="Cryptic Vaults"
         android:allowBackup="false"
         android:largeHeap="true"
         android:icon="@mipmap/ic_launcher"
@@ -37,7 +37,7 @@
             </intent-filter>
         </activity>
 
-        <!-- "Open Cryptic when a drive is plugged in" (Settings): the USB registration lives on this alias so the
+        <!-- "Open Cryptic Vaults when a drive is plugged in" (Settings): the USB registration lives on this alias so the
              switch can turn it off and on (PackageManager.setComponentEnabledSetting) -->
         <activity-alias
             android:name=".UsbAttach"
@@ -51,7 +51,7 @@
                 android:resource="@xml/usb_mass_storage" />
         </activity-alias>
 
-        <!-- No registration for YubiKeys on purpose: it made Android ask "Open Cryptic to handle YubiKey?" on top of the
+        <!-- No registration for YubiKeys on purpose: it made Android ask "Open Cryptic Vaults to handle YubiKey?" on top of the
              USB access question at every plug-in. The app asks for access itself when the lock screen sees the key. -->
 
         <activity android:name=".SettingsActivity" android:exported="false" />
@@ -68,7 +68,7 @@
 
         <provider
             android:name=".VolumeProvider"
-            android:authorities="me.nocke.cryptic.documents"
+            android:authorities="me.nocke.cryptic.vaults.documents"
             android:exported="true"
             android:grantUriPermissions="true"
             android:permission="android.permission.MANAGE_DOCUMENTS">

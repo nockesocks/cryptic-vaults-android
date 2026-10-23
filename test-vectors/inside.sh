@@ -106,7 +106,7 @@ make)
     cryptsetup --version > tools.version; mkfs.exfat -V 2>&1 | head -1 >> tools.version
     ls -l ;;
 dirty)
-    # ext4 left mounted, as by an unplug: Cryptic must replay the journal (csum v3 64-bit log; no-checksum 32-bit log)
+    # ext4 left mounted, as by an unplug: Cryptic Vaults must replay the journal (csum v3 64-bit log; no-checksum 32-bit log)
     mkdir -p /mnt/x
     mkdirty dirty-ext4.img -b 4096
     mkdirty dirty-ext4-1k.img -b 1024 -O ^metadata_csum,^64bit

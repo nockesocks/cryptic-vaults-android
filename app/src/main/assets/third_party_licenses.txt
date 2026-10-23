@@ -1,4 +1,4 @@
-Third-party software in Cryptic
+Third-party software in Cryptic Vaults
 
 == Argon2 (app/src/main/cpp/argon2): CC0 1.0 or Apache License 2.0 ==
 
